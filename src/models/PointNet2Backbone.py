@@ -119,9 +119,13 @@ class PointNet2Backbone(nn.Module):
         return global_features, local_features
 
 if __name__ == '__main__':
-
-    pointnet_backbone = PointNet2Backbone(input_feature_dim=3, lang_hidden_dim=128).cuda()
+    import os
+    import sys
+    sys.path.insert(0, os.getcwd())
+    from src.configs.config import CONF as cfg
+    
+    pointnet_backbone = PointNet2Backbone(cfg, input_feature_dim=3, lang_hidden_dim=128).cuda()
     print (pointnet_backbone)
-    out1, out2 = pointnet_backbone(torch.rand(16,20000,6).cuda(), torch.rand(16,128).cuda())
+    out1, out2 = pointnet_backbone(torch.rand(16,4096,6).cuda(), torch.rand(16,128).cuda())
     print (out1.shape)
     print (out2.shape)

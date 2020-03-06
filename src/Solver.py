@@ -64,7 +64,7 @@ class Solver(object):
             if (epoch+1)%2 == 0:
                 self._run_epoch(epoch, 'valid')
     
-    def test(self):
+    def evaluate(self):
         pass
     
     def _run_iter(self, sample, phrase):
@@ -85,7 +85,7 @@ class Solver(object):
         self.metrics_history['inst_seg_rec'] = np.max(inst_seg_rec)
         self.metrics_history['inst_seg_iou'] = np.max(inst_seg_iou)
         
-        total_loss = bbox_loss + 0.1 * inst_loss
+        total_loss = bbox_loss + 0.01 * inst_loss
 
         self.bb_loss += bbox_loss.item()
         self.i_loss += inst_loss.item()
@@ -122,13 +122,13 @@ class Solver(object):
                                 x_acc=self.metrics_history['bbox_acc'], 
                                 x_iou=self.metrics_history['inst_seg_iou'])
             
-            self.writer.add_scalar('Average bbox loss', self.bb_loss/(i+1), global_step=epoch)
-            self.writer.add_scalar('Average inst loss', self.i_loss/(i+1), global_step=epoch)
-            self.writer.add_scalar('Average total loss', self.t_loss/(i+1), global_step=epoch)
-            self.writer.add_scalar('Bbox mean Accuracy', m_acc, global_step=epoch)
-            self.writer.add_scalar('IS mean Precision', m_prec, global_step=epoch)
-            self.writer.add_scalar('IS mean Recall', m_rec, global_step=epoch)
-            self.writer.add_scalar('IS mean IoU', m_IoU, global_step=epoch)
+            self.writer.add_scalar(phrase+'/Loss/Average bbox loss', self.bb_loss/(i+1), global_step=epoch)
+            self.writer.add_scalar(phrase+'/Loss/Average inst loss', self.i_loss/(i+1), global_step=epoch)
+            self.writer.add_scalar(phrase+'/Loss/Average total loss', self.t_loss/(i+1), global_step=epoch)
+            self.writer.add_scalar(phrase+'/Bbox/Bbox mean Accuracy', m_acc, global_step=epoch)
+            self.writer.add_scalar(phrase+'/IS/mPrecision', m_prec, global_step=epoch)
+            self.writer.add_scalar(phrase+'/IS/mRecall', m_rec, global_step=epoch)
+            self.writer.add_scalar(phrase+'/IS/mIoU', m_IoU, global_step=epoch)
             
         print ('Bbox mean accuracy:', m_acc)
         print ('Inst. Seg. mean precision:', m_prec)

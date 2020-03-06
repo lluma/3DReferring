@@ -9,7 +9,6 @@
 """
 import numpy as np
 
-
 class Metrics(object):
     
     def __init__(self):
@@ -22,9 +21,9 @@ class Metrics(object):
         self.n_recall = np.array([])
         self.n_correct = np.array([])
         
-        self.precisions = np.array([])
-        self.recalls = np.array([])
-        self.IoUs = np.array([])
+        self.precisions = None
+        self.recalls = None
+        self.IoUs = None
     
     def _convert_vertices2center_length(self, vertices):
         min_vertex = vertices[:,:3]
@@ -68,45 +67,55 @@ class Metrics(object):
         
         iou = self._compute_3d_iou(pred_bbox, gt_bbox)
         hit = iou > 0.25
-        self.n_hit += np.sum(hit)
-        self.n_bbox += gt_bbox.size
-        acc = np.sum(hit) / (gt_bbox.size + 1e-20)
+        self.n_hit += np.sum(hit.astype(np.int32))
+        self.n_bbox += hit.size
+        acc = self.n_hit / (self.n_bbox + 1e-20)
         self.accs = np.append(self.accs, acc)
         
         return acc
     
     def compute_inst_seg_metrics(self, pred_inst_seg, gt_inst_seg):
+        '''
+            Input:
+                pred_inst_seg (B x N): The predicted output result.
+                gt_inst_seg (B x N): The groundTruth per-point mask.
+            Output:
+                precision (B): Accumulated precision for current training.
+                recall (B): Accumulated recall for current training.
+                precision (B): Accumulated precision for current training.
+        '''
+        pred_inst_seg = pred_inst_seg > 0.25 # B x N
         
-        pred_inst_seg = pred_inst_seg > 0.25
-        
-        print ('pred_inst_seg', pred_inst_seg.astype(np.int32))
-        print ('gt_inst_seg', gt_inst_seg.astype(np.int32))
-        print ('correct_seg', pred_inst_seg.astype(np.int32) * gt_inst_seg.astype(np.int32))
-        
-        self.n_precision = np.append(self.n_precision, np.sum(pred_inst_seg.astype(np.int32), axis=1))
-        self.n_recall = np.append(self.n_recall, np.sum(gt_inst_seg.astype(np.int32), axis=1))
-        self.n_correct = np.append(self.n_correct, np.sum(pred_inst_seg.astype(np.int32) * gt_inst_seg.astype(np.int32), axis=1))
-        
-        print ('n_precision:', self.n_precision)
-        print ('n_recall:', self.n_recall)
-        print ('n_correct:', self.n_correct)
-        
-        precision = self.n_correct / (self.n_precision + 1e-20)
-        recall = self.n_correct / (self.n_recall + 1e-20)
-        IoU = self.n_correct / ((self.n_precision + self.n_recall - self.n_correct) + 1e-20)
-        
-        self.precisions = np.append(self.precisions, precision)
-        self.recalls = np.append(self.recalls, recall)
-        self.IoUs = np.append(self.IoUs, IoU)
+        self.n_precision = np.append(self.n_precision, np.sum(pred_inst_seg.astype(np.int32), axis=1)) # B
+        self.n_recall = np.append(self.n_recall, np.sum(gt_inst_seg.astype(np.int32), axis=1)) # B
+        self.n_correct = np.append(self.n_correct, np.sum(pred_inst_seg.astype(np.int32) * gt_inst_seg.astype(np.int32), axis=1)) # B
+           
+        precision = self.n_correct / (self.n_precision + 1e-20) # B * K
+        recall = self.n_correct / (self.n_recall + 1e-20) # B * K
+        IoU = self.n_correct / ((self.n_precision + self.n_recall - self.n_correct) + 1e-20) # B * K
+            
+        self.precisions = precision if self.precisions is None else np.concatenate((self.precisions, precision), axis=0) # K x B
+        self.recalls = recall if self.recalls is None else np.concatenate((self.recalls, recall), axis=0) # K x B
+        self.IoUs = IoU if self.IoUs is None else np.concatenate((self.IoUs, IoU), axis=0) # K x B
         
         return precision, recall, IoU
     
     def compute_final_metrics(self):
         
-        m_acc = np.sum(self.accs) / (np.asarray(self.accs).size + 1e-20)
-        m_prec = np.sum(self.precisions) / (np.asarray(self.precisions).size + 1e-20)
-        m_rec = np.sum(self.recalls) / (np.asarray(self.recalls).size + 1e-20)
-        m_IoU = np.sum(self.IoUs) / (np.asarray(self.IoUs).size + 1e-20)
+        # m_acc = np.sum(self.accs) / (np.asarray(self.accs).size + 1e-20)
+        m_acc = self.n_hit / (self.n_bbox + 1e-20)
+        
+        # m_prec = np.sum(self.precisions) / (np.asarray(self.precisions).size + 1e-20)
+        m_prec = np.mean(self.n_correct / (self.n_precision + 1e-20))
+        # m_prec = np.median(self.precisions)
+        
+        # m_rec = np.sum(self.recalls) / (np.asarray(self.recalls).size + 1e-20)
+        m_rec = np.mean(self.n_correct / (self.n_recall + 1e-20))
+        # m_rec = np.median(self.recalls)
+        
+        # m_IoU = np.sum(self.IoUs) / (np.asarray(self.IoUs).size + 1e-20)
+        m_IoU = np.mean(self.n_correct / ((self.n_precision + self.n_recall - self.n_correct) + 1e-20))
+        # m_IoU = np.mean(self.IoUs)
         
         return m_acc, m_prec, m_rec, m_IoU
     
@@ -120,9 +129,9 @@ class Metrics(object):
         self.n_recall = np.array([])
         self.n_correct = np.array([])
         
-        self.precisions = np.array([])
-        self.recalls = np.array([])
-        self.IoUs = np.array([])
+        self.precisions = None
+        self.recalls = None
+        self.IoUs = None
     
 if __name__ == "__main__":
     
